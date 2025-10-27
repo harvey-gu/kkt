@@ -24,14 +24,6 @@
 
 ---
 
-## 🏗️ 技术栈
-
-| 前端 | 后端 | AI 模块 | 数据库 | 部署 |
-|:----:|:----:|:--------:|:------:|:----:|
-| Vue 3 + Vite + Tailwind | Node.js + Express | PyTorch / ONNX Runtime | PostgreSQL | Docker + Nginx |
-
----
-
 ## 🚀 快速开始
 
 ```bash
