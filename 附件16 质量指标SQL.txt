@@ -1,0 +1,313 @@
+1、一次合格率
+1.1   MES：一次合格率-全表
+一次合格率-报工
+  SELECT 
+        psd.teamName, 
+        whi.MaterialNo, 
+        whi.CreationDate AS reportDate, 
+        whi.firstQuantity,
+        psd.startPsName as psname,
+        psd.Specification,
+        aps.moldmaterialno as '模具代码',
+        aps.moldname as '模具名',
+        psd.name as '产品名称'
+    FROM 
+        Mes_PsDailyAssign psd
+    JOIN 
+        Mes_WHIBind whi ON psd.lotNo = whi.psdlotno
+   join  
+         mes_apsamtcapacity aps on aps.materialno = psd.materialno
+    WHERE 
+        whi.CreationDate BETWEEN '2024-01-01' AND GETDATE()
+    ORDER BY 
+        whi.CreationDate DESC;
+一次合格率-不合格
+ SELECT 
+    a.materialno,
+    a.teamname,   
+    a.reportdate,
+    ar.AttributeValue AS '不良原因',
+    a.quantity,
+    a.psname         
+    FROM 
+        Mes_QRNotGood a
+    LEFT JOIN 
+        mes_team b ON a.teamid = b.materialno
+    LEFT JOIN 
+        Mes_WorkshopMember c ON b.objid = c.b_objid
+    LEFT JOIN 
+        Qcp_WorkShop d ON c.a_objid = d.objid
+    LEFT JOIN 
+        Mes_AttributeResult ar ON ar.AttributeOBJID = a.ObjID
+        AND ar.AttributeOBJTYPE = 'mesqrnotgood'
+        AND ar.AttributeName = '不良原因'
+    LEFT JOIN
+        (SELECT code, quantity
+         FROM Mes_QRNotGood) b2 ON a.code = b2.code 
+不良原因
+ SELECT DISTINCT AttributeValue
+    FROM Mes_AttributeResult
+    WHERE AttributeOBJTYPE = 'mesqrnotgood'
+      AND AttributeName = '不良原因'
+      AND CreationDate >= '2024-01-01'
+      AND CreationDate <= GETDATE();
+
+
+1.2   OA：OA不合格数据
+    SELECT 
+        wlbh AS '物料编码',
+        ggxh AS '规格型号',
+        sl AS '数量',
+        thyy AS '退货原因',
+        CASE 
+            WHEN zrbm1 = 0 THEN '高冲车间'
+            WHEN zrbm1 = 1 THEN '压铸车间'
+            WHEN zrbm1 = 2 THEN '单冲车间'
+            ELSE '未知车间'
+        END AS '责任部门',
+        CASE 
+            WHEN zrbm1 = 0 THEN '高冲车间'
+            WHEN zrbm1 = 1 THEN '压铸车间'
+            WHEN zrbm1 = 2 THEN '单冲车间'
+            ELSE '未知车间'
+        END AS '责任车间',
+        thsj AS '退货时间',
+        wlmc as '物料名称',
+        ddhpch as '订单批次号',
+        jg as '结果'
+    FROM formtable_main_105_dt1
+    WHERE thsj > '2025-01-01' and cslb !='1';
+
+
+
+2、PPM
+2.1   发货数量
+Select v1.Fdate as 日期,u1.forderbillno as 订单单号,t14.FNumber as 产品长代码,u1.fqty as 实发数量 from ICStockBill  v1 INNER JOIN ICStockBillEntry u1 ON     v1.FInterID = u1.FInterID   AND u1.FInterID <>0 
+ LEFT OUTER JOIN t_ICItem t14 ON     u1.FItemID = t14.FItemID   AND t14.FItemID <>0 
+ where 1=1 AND (     
+v1.Fdate >=  '2025-01-01' 
+) AND (v1.FTranType=21)
+
+
+
+2.2   客诉客退
+  SELECT 
+    a.khmc AS 客户名称,
+    a.sqrq AS 客诉日期,
+    a.chsj AS 出货时间,
+    a.bhgpfl AS 不合格分类,
+    a.cplb AS 产品类别,
+    a.cpsl AS 产品数量,
+    a.ggxh1 AS 规格型号,
+    a.wlbh AS 物料编号,          
+    a.ggxh AS 产品型号,
+    a.gkdtsyqjqwt AS 客诉内容,
+    CASE 
+        WHEN a.ksdj = '1' THEN '中级'
+        WHEN a.ksdj = '2' THEN '低级'
+        ELSE a.ksdj
+    END AS 客诉等级,
+    a.zrbmx AS 责任部门,
+    a.pc AS 批次,
+    a.blsl AS 不良数量,
+    a.blbl AS 不良比例,
+    a.lsczfs AS 临时处置方式,
+    a.fxyy AS 分析原因,
+    a.id AS 客诉识别号,
+    b.ggxh AS 子表规格型号,
+    b.wlbm AS 产品编码,
+    b.thyy AS 退货原因,
+    b.bhgfl AS 子表不合格分类,
+    b.clfs AS 处理方式,
+    CASE 
+        WHEN b.clfs = '0' THEN '报废'
+        WHEN b.clfs = '1' THEN '返工'
+        ELSE b.clfs
+    END AS 处理方式说明,
+    b.thsl AS 退货数量
+
+FROM formtable_main_36 a
+LEFT JOIN formtable_main_36_dt1 b
+    ON b.mainid = a.id;
+
+
+
+2.3   物料匹配车间
+select  a.MaterialNo as 物料编码, a.name as 物料名称, a.specification as 规格型号, a.wsname as 车间 from Sys_Material a
+
+
+
+3、客诉次数
+3.1   客诉客退
+参照2.2
+
+
+
+4、PDCA
+4.1   质量异常流程
+select
+zldj.lcbh AS 流程编号,
+zldj.gllcbh AS 关联流程编号,
+zldj.rybh as 瑞元编号,
+zldj.ycfsdd AS 异常发生地点,
+zldj.wlmc AS 物料名称,
+zldj.wlbm AS 物料编码,
+zldj.ggxh AS 规格型号,
+zldj.ycpc AS 异常批次,
+zldj.pccpsl1 AS 批次产品数量,
+zldj.ycscjs1 AS 异常数抽检数,
+zldj.bll1 AS 不良率,
+zldj.ycms AS 异常描述,
+zldj.yyfx1 AS 原因分析1,
+zldj.yyfx2 AS 原因分析2,
+zldj.yyfx3 AS 原因分析3,
+zldj.yyfx4 AS 原因分析4,
+zldj.yyfx5 AS 原因分析5,
+zldj.yyfx6 AS 原因分析6,
+zldj.gsjh1 AS 改善计划1,
+zldj.gsjh2 AS 改善计划2,
+zldj.gsjh3 AS 改善计划3,
+zldj.gsjh4 AS 改善计划4,
+zldj.gsjh5 AS 改善计划5,
+zldj.gsjh6 AS 改善计划6,
+zldj.gsjh7 AS 改善计划7,
+zldj.gsjh8 AS 改善计划8,
+zldj.gsjh9 AS 改善计划9,
+zldj.gsjh10 AS 改善计划10,
+zldj.gsjh12 AS 改善计划12,
+zldj.gsjh13 AS 改善计划13,
+zldj.gsjh14 AS 改善计划14,
+zldj.gsjh15 AS 改善计划15,
+zldj.gsjh16 AS 改善计划16,
+zldj.gsjh17 AS 改善计划17,
+zldj.gsjh18 AS 改善计划18,
+zldj.gsjh11 AS 改善计划11,
+zldj.fzr1 AS 负责人1,
+zldj.fzr2 AS 负责人2,
+zldj.fzr3 AS 负责人3,
+zldj.fzr4 AS 负责人4,
+zldj.fzr5 AS 负责人5,
+zldj.fzr6 AS 负责人6,
+zldj.fzr7 AS 负责人7,
+zldj.fzr8 AS 负责人8,
+zldj.fzr9 AS 负责人9,
+zldj.fzr10 AS 负责人10,
+zldj.fzr11 AS 负责人11,
+zldj.fzr12 AS 负责人12,
+zldj.fzr13 AS 负责人13,
+zldj.fzr14 AS 负责人14,
+zldj.fzr15 AS 负责人15,
+zldj.fzr16 AS 负责人16,
+zldj.fzr17 AS 负责人17,
+zldj.fzr18 AS 负责人18,
+zldj.yjsj1 AS 预计时间1,
+zldj.yjsj2 AS 预计时间2,
+zldj.yjsj3 AS 预计时间3,
+zldj.yjsj4 AS 预计时间4,
+zldj.yjsj5 AS 预计时间5,
+zldj.yjsj6 AS 预计时间6,
+zldj.yjsj7 AS 预计时间7,
+zldj.yjsj8 AS 预计时间8,
+zldj.yjsj9 AS 预计时间9,
+zldj.yjsj10 AS 预计时间10,
+zldj.yjsj11 AS 预计时间11,
+zldj.yjsj12 AS 预计时间12,
+zldj.yjsj13 AS 预计时间13,
+zldj.yjsj14 AS 预计时间14,
+zldj.yjsj15 AS 预计时间15,
+zldj.yjsj16 AS 预计时间16,
+zldj.yjsj17 AS 预计时间17,
+zldj.yjsj18 AS 预计时间18,
+zldj.sjsj1 AS 实际时间1,
+zldj.sjsj2 AS 实际时间2,
+zldj.sjsj3 AS 实际时间3,
+zldj.sjsj4 AS 实际时间4,
+zldj.sjsj5 AS 实际时间5,
+zldj.sjsj6 AS 实际时间6,
+zldj.sjsj7 AS 实际时间7,
+zldj.sjsj8 AS 实际时间8,
+zldj.sjsj9 AS 实际时间9,
+zldj.sjsj10 AS 实际时间10,
+zldj.sjsj11 AS 实际时间11,
+zldj.sjsj12 AS 实际时间12,
+zldj.sjsj13 AS 实际时间13,
+zldj.sjsj14 AS 实际时间14,
+zldj.sjsj15 AS 实际时间15,
+zldj.sjsj16 AS 实际时间16,
+zldj.sjsj17 AS 实际时间17,
+zldj.sjsj18 AS 实际时间18,
+zldj.rybh AS 是否发起质量异常,
+CONCAT(zlycks.OPERATEDATE,' ',zlycks.operatetime) as 质量异常开始时间,
+CONCAT(pks.OPERATEDATE,' ',pks.operatetime) as P开始时间,
+CONCAT(do.OPERATEDATE,' ',do.operatetime) as P结束时间,
+CONCAT(checkst.OPERATEDATE,' ',checkst.operatetime) as D结束时间,
+CONCAT(act.OPERATEDATE,' ',act.operatetime) as C结束时间,
+CONCAT(actend.OPERATEDATE,' ',actend.operatetime) as A结束时间,
+CONCAT(gb.OPERATEDATE,' ',gb.operatetime) as PDCA关闭时间,
+CASE WHEN gb.gb = '是' THEN '关闭'
+               ELSE '未关闭'
+    END AS PDCA
+FROM formtable_main_175 zldj
+left join (select distinct zldj.id,zldj.requestid,zldj.lcbh,'是' as zlycks,wr.OPERATEDATE,wr.operatetime
+    from formtable_main_175 zldj
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（1/14）原因分析会' and 
+CONCAT(wr.OPERATEDATE,' ',wr.operatetime)=(select MIN(CONCAT(wr.OPERATEDATE,' ',wr.operatetime)) from formtable_main_175
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（1/14）原因分析会' and zldj.requestid=formtable_main_175.requestid)) as zlycks on zldj.requestid=zlycks.requestid
+left join (select distinct zldj.id,zldj.requestid,zldj.lcbh,'是' as pks,wr.OPERATEDATE,wr.operatetime
+    from formtable_main_175 zldj
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='P（开始）' and 
+CONCAT(wr.OPERATEDATE,' ',wr.operatetime)=(select MAX(CONCAT(wr.OPERATEDATE,' ',wr.operatetime)) from formtable_main_175
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='P（开始）' and zldj.requestid=formtable_main_175.requestid)) as pks on zldj.requestid=pks.requestid
+left join (select distinct zldj.id,zldj.requestid,zldj.lcbh,'是' as do,wr.OPERATEDATE,wr.operatetime
+    from formtable_main_175 zldj
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（8/14）领导审核' and 
+CONCAT(wr.OPERATEDATE,' ',wr.operatetime)=(select MAX(CONCAT(wr.OPERATEDATE,' ',wr.operatetime)) from formtable_main_175
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（8/14）领导审核' and zldj.requestid=formtable_main_175.requestid)) as do on zldj.requestid=do.requestid
+left join (select distinct zldj.id,zldj.requestid,zldj.lcbh,'是' as checkst,wr.OPERATEDATE,wr.operatetime
+    from formtable_main_175 zldj
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='合并' and 
+CONCAT(wr.OPERATEDATE,' ',wr.operatetime)=(select MAX(CONCAT(wr.OPERATEDATE,' ',wr.operatetime)) from formtable_main_175
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='合并' and zldj.requestid=formtable_main_175.requestid)) as checkst on zldj.requestid=checkst.requestid
+left join (select distinct zldj.id,zldj.requestid,zldj.lcbh,'是' as act,wr.OPERATEDATE,wr.operatetime
+    from formtable_main_175 zldj
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（12/14）监督表跟踪' and 
+CONCAT(wr.OPERATEDATE,' ',wr.operatetime)=(select MAX(CONCAT(wr.OPERATEDATE,' ',wr.operatetime)) from formtable_main_175
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（12/14）监督表跟踪' and zldj.requestid=formtable_main_175.requestid)) as act on zldj.requestid=act.requestid
+left join (select distinct zldj.id,zldj.requestid,zldj.lcbh,'是' as actend,wr.OPERATEDATE,wr.operatetime
+    from formtable_main_175 zldj
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（13/14）产品跟踪' and 
+CONCAT(wr.OPERATEDATE,' ',wr.operatetime)=(select MAX(CONCAT(wr.OPERATEDATE,' ',wr.operatetime)) from formtable_main_175
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（13/14）产品跟踪' and zldj.requestid=formtable_main_175.requestid)) as actend on zldj.requestid=actend.requestid
+left join (select distinct zldj.id,zldj.requestid,zldj.lcbh,'是' as gb,wr.OPERATEDATE,wr.operatetime
+    from formtable_main_175 zldj
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（14/14）领导审批' and 
+CONCAT(wr.OPERATEDATE,' ',wr.operatetime)=(select MAX(CONCAT(wr.OPERATEDATE,' ',wr.operatetime)) from formtable_main_175
+left join workflow_requestlog wr on zldj.requestid=wr.requestid
+left join workflow_nodebase wn on wr.nodeid=wn.id
+where wn.nodename='（14/14）领导审批' and zldj.requestid=formtable_main_175.requestid)) as gb on zldj.requestid=gb.requestid

@@ -1,0 +1,63 @@
+1、MES-原料入库表
+SELECT 
+NAME AS '名称',
+MATERIALNO AS '物料编码',
+specification AS '规格',
+code AS '条码',
+firstquantity as '入库数量',
+usablequantity as '可用数量',
+producterno AS '卷号',
+weight AS '重量',
+width AS '宽度',
+INSTOCKTIME AS '入库日期'
+FROM Mes_WHIBind WHERE WHID=0 AND INSTOCKTIME >'2024-12-31'
+
+2、MES-分条出入库记录
+SELECT 
+NAME AS '名称',
+MATERIALNO AS '物料编码',
+specification AS '规格',
+firstquantity as '数量',
+code AS '条码',
+INSTOCKTIME AS '入库日期',
+deliverydate AS '出库日期'
+FROM Mes_WHIBind WHERE WHID=201 AND TYPE='4' 
+AND INSTOCKTIME >='2025-03-01 00:00:00.000' AND INSTOCKTIME<='2025-03-02 00:00:00.000' 
+
+3、扫码出库
+SELECT 
+NAME AS '名称',
+code AS '条码',
+MATERIALNO AS '物料编码',
+specification AS '规格',
+firstquantity as '数量',
+INSTOCKTIME AS '入库日期',
+deliverydate AS '出库日期'
+FROM Mes_WHIBind WHERE WHID=201 
+AND deliverydate >='2025-06-02 00:00:00.000' AND deliverydate<='2025-06-03 00:00:00.000' AND CONFIRMOUT='1'
+
+4、
+select t4.FBillNo as '单据号',
+t4.Fdate as '日期',
+t6.fnumber as '客户代码',
+t6.fname as '客户',
+t8.FNumber as '成品代码',
+t8.FName as '成品名称',
+t8.FModel as '型号',
+t3.fnumber as '材料编码',
+t3.fname as '材料名称',
+t3.fmodel as '规格型号',
+t5.FQty as '出库数量',
+t2.fauxqty as '定额',
+t7.FName as '单位',
+t2.FAuxQty*t5.FQty  as '总耗用'  from ICStockBill t4 
+inner join ICStockBillEntry t5 on t4.FInterID=t5.FInterID
+inner join t_ICItem t8 on t5.FItemID=t8.FItemID
+inner join ICBOM t1 on t1.FItemID=t5.FItemID 
+inner join ICBOMChild t2 on t1.FInterID=t2.FInterID
+inner join t_ICItem t3 on t2.FItemID=t3.FItemID
+inner join t_Organization t6 on t4.FSupplyID=t6.FItemID  
+inner join t_MeasureUnit  t7  on t2.FUnitID=t7.FItemID 
+where t4.FTranType='21' 
+AND   t4.fdate>='20250501' 
+AND   t4.fdate<='20250531' 
